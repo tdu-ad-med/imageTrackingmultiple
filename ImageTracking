@@ -1,0 +1,63 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
+
+
+public class ImageTracking : MonoBehaviour
+{
+
+    [SerializeField] private GameObject[] _arPrefabs;
+    [SerializeField] private ARTrackedImageManager _imageManager;
+
+    private readonly Dictionary<string, GameObject> _markerNameAndPrefabDictionary = new Dictionary<string, GameObject>();
+
+    private void Start()
+    {
+        _imageManager.trackedImagesChanged += OnTrackedImagesChanged;
+
+        for (var i = 0; i < _arPrefabs.Length; i++)
+        {
+            var arPrefab = Instantiate(_arPrefabs[i]);
+            _markerNameAndPrefabDictionary.Add(_imageManager.referenceLibrary[i].name, arPrefab);
+            arPrefab.SetActive(false);
+        }
+    }
+    private void OnEnable()
+    {
+        _imageManager.trackedImagesChanged += OnTrackedImagesChanged;
+    }
+    private void OnDisable()
+    {
+        _imageManager.trackedImagesChanged -= OnTrackedImagesChanged;
+    }
+
+    /// <param name="trackedImage">認識した画像マーカー</param>
+    private void ActivateARObject(ARTrackedImage trackedImage)
+    {
+        var arObject = _markerNameAndPrefabDictionary[trackedImage.referenceImage.name];
+        var imageMarkerTransform = trackedImage.transform;
+
+        var markerFrontRotation = imageMarkerTransform.rotation * Quaternion.Euler(90f, 0f, 0f);
+        arObject.transform.SetPositionAndRotation(imageMarkerTransform.transform.position, markerFrontRotation);
+        arObject.transform.SetParent(imageMarkerTransform);
+        arObject.SetActive(trackedImage.trackingState == TrackingState.Limited||trackedImage.trackingState == TrackingState.Tracking || trackedImage.trackingState == TrackingState.None);
+    }
+
+    /// <param name="eventArgs">検出イベントに関する引数</param>
+    private void OnTrackedImagesChanged(ARTrackedImagesChangedEventArgs eventArgs)
+    {
+        foreach (var trackedImage in eventArgs.added)
+        {
+            ActivateARObject(trackedImage);
+        }
+
+        foreach (var trackedImage in eventArgs.updated)
+        {
+            ActivateARObject(trackedImage);
+        }
+
+    }
+
+  
+}
